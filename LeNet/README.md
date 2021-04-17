@@ -1,6 +1,6 @@
 ## LeNet Architecture
 
-![](LeNet/LeNet-Architecture-1.png)
+![](LeNet-Architecture-1.png)
 
 
 ## Notes
