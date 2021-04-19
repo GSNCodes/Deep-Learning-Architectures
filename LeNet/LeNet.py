@@ -7,7 +7,7 @@ class LeNet(nn.Module):
 
 		super(LeNet, self).__init__()
 		self.relu = nn.ReLU()
-		self.pool = nn.AvgPool2d(kernel_size=(2,2), stride=(2,2))
+		self.pool = nn.AvgPool2d(kernel_size=2, stride=2)
 		self.conv1 = nn.Conv2d(in_channels=1, out_channels=6, kernel_size=5, stride=1, padding=0)
 		self.conv2 = nn.Conv2d(in_channels=6, out_channels=16, kernel_size=5, stride=1, padding=0)
 		self.conv3 = nn.Conv2d(in_channels=16, out_channels=120, kernel_size=5, stride=1, padding=0)
