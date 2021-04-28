@@ -2,6 +2,8 @@
 
 ![](LeNet-Architecture-1.png)
 
+`LeNet.py` contains the LeNet architecture.  
+`mnist_main.py` is a script that uses the above said architecture for training a digit classification model.
 
 ## Notes
 
