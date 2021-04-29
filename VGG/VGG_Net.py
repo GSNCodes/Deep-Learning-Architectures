@@ -63,13 +63,13 @@ class VGG(nn.Module):
 		return nn.Sequential(*layers)
 
 
-def vgg16():
+def vgg16(in_channels=3, num_classes=10):
 
-	return VGG(16)
+	return VGG(16, in_channels, num_classes)
 
-def vgg19():
+def vgg19(in_channels=3, num_classes=10):
 
-	return VGG(19)
+	return VGG(19, in_channels, num_classes)
 
 if __name__ == '__main__':
 

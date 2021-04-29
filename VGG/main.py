@@ -4,76 +4,21 @@ import torch.optim as optim
 import torch.nn.functional as F
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
+from torchvision.datasets import ImageFolder
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data import random_split
-
+from tqdm import tqdm
 from VGG_Net import *
-
-
-dataset = datasets.CIFAR10(root='data/', download=True, transform=ToTensor())
-test_dataset = datasets.CIFAR10(root='data/', train=False, transform=ToTensor())
-
-torch.manual_seed(43)
-val_size = 5000
-train_size = len(dataset) - val_size
-
-train_ds, val_ds = random_split(dataset, [train_size, val_size])
-print(len(train_ds), len(val_ds))
-
-batch_size=128
-train_loader = DataLoader(train_ds, batch_size, shuffle=True, num_workers=4, pin_memory=True)
-val_loader = DataLoader(val_ds, batch_size*2, num_workers=4, pin_memory=True)
-test_loader = DataLoader(test_dataset, batch_size*2, num_workers=4, pin_memory=True)
+import argparse
+import sys
+# Useful for examining the network
+from torchsummary import summary
 
 
 def accuracy(outputs, labels):
     _, preds = torch.max(outputs, dim=1)
     return torch.tensor(torch.sum(preds == labels).item() / len(preds))
 
-
-class ImageClassificationBase(nn.Module):
-    def training_step(self, batch):
-        images, labels = batch 
-        out = self(images)                  # Generate predictions
-        loss = F.cross_entropy(out, labels) # Calculate loss
-        return loss
-    
-    def validation_step(self, batch):
-        images, labels = batch 
-        out = self(images)                    # Generate predictions
-        loss = F.cross_entropy(out, labels)   # Calculate loss
-        acc = accuracy(out, labels)           # Calculate accuracy
-        return {'val_loss': loss.detach(), 'val_acc': acc}
-        
-    def validation_epoch_end(self, outputs):
-        batch_losses = [x['val_loss'] for x in outputs]
-        epoch_loss = torch.stack(batch_losses).mean()   # Combine losses
-        batch_accs = [x['val_acc'] for x in outputs]
-        epoch_acc = torch.stack(batch_accs).mean()      # Combine accuracies
-        return {'val_loss': epoch_loss.item(), 'val_acc': epoch_acc.item()}
-    
-    def epoch_end(self, epoch, result):
-        print("Epoch [{}], val_loss: {:.4f}, val_acc: {:.4f}".format(epoch, result['val_loss'], result['val_acc']))
-
-def evaluate(model, val_loader):
-    outputs = [model.validation_step(batch) for batch in val_loader]
-    return model.validation_epoch_end(outputs)
-
-def fit(epochs, lr, model, train_loader, val_loader, opt_func=torch.optim.SGD):
-    history = []
-    optimizer = opt_func(model.parameters(), lr)
-    for epoch in range(epochs):
-        # Training Phase 
-        for batch in train_loader:
-            loss = model.training_step(batch)
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
-        # Validation phase
-        result = evaluate(model, val_loader)
-        model.epoch_end(epoch, result)
-        history.append(result)
-    return history
 
 def get_default_device():
     """Pick GPU if available, else CPU"""
@@ -82,28 +27,113 @@ def get_default_device():
     else:
         return torch.device('cpu')
 
-def to_device(data, device):
-    """Move tensor(s) to chosen device"""
-    if isinstance(data, (list,tuple)):
-        return [to_device(x, device) for x in data]
-    return data.to(device, non_blocking=True)
 
-class DeviceDataLoader():
-    """Wrap a dataloader to move data to a device"""
-    def __init__(self, dl, device):
-        self.dl = dl
-        self.device = device
+
+@torch.no_grad()
+def evaluate(model, val_loader, device):
+    model.eval()
+    val_losses = []
+    val_acc = []
+
+    for images, labels in tqdm(val_loader):
         
-    def __iter__(self):
-        """Yield a batch of data after moving it to device"""
-        for b in self.dl: 
-            yield to_device(b, self.device)
+        images = images.to(device=device)
+        labels = labels.to(device=device)
 
-    def __len__(self):
-        """Number of batches"""
-        return len(self.dl)
+        out = model(images)
+        loss = F.cross_entropy(out, labels)
+        acc = accuracy(out, labels)
+        val_losses.append(loss)
+        val_acc.append(acc)
+
+    epoch_loss = torch.stack(val_losses).mean()
+    epoch_acc  = torch.stack(val_acc).mean()
+
+    return {'val_loss': epoch_loss.item(), 'val_acc': epoch_acc.item()}
 
 
-train_loader = DeviceDataLoader(train_loader, device)
-val_loader = DeviceDataLoader(val_loader, device)
-test_loader = DeviceDataLoader(test_loader, device)
+def fit(epochs, lr, model, train_loader, val_loader, device, opt_func=optim.SGD):
+    history = []
+    optimizer = opt_func(model.parameters(), lr=lr)
+    
+    for epoch in range(epochs):
+
+        print(f"Training --- Epoch:- {epoch+1}/{epochs}")
+
+        # Training Phase 
+        model.train()
+        train_losses = []
+        for images, labels in tqdm(train_loader):
+            
+            images = images.to(device=device)
+            labels = labels.to(device=device)
+
+            out = model(images)
+            loss = F.cross_entropy(out, labels)
+            train_losses.append(loss)
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+            
+            
+        # Validation phase
+        result = evaluate(model, val_loader, device)
+        result['train_loss'] = torch.stack(train_losses).mean().item()
+        history.append(result)
+
+        print("Epoch [{}], train_loss: {:.4f}, val_loss: {:.4f}, val_acc: {:.4f}".format(
+            epoch+1, result['train_loss'], result['val_loss'], result['val_acc']))
+
+    return history
+
+
+ap = argparse.ArgumentParser()
+ap.add_argument("-m", "--model", required=True, help="Choose between vgg16 and vgg19 architectures")
+args = vars(ap.parse_args())
+
+device = get_default_device()
+
+image_transform = {
+	'train': transforms.Compose([transforms.CenterCrop(size=224), transforms.ToTensor()]),
+	'test' : transforms.Compose([transforms.CenterCrop(size=224), transforms.ToTensor()])
+}
+
+data_dir = 'dataset'
+
+train_dataset = ImageFolder(data_dir+'/train_set', transform=image_transform['train'])
+test_dataset = ImageFolder(data_dir+'/test_set', transform=image_transform['test'])
+
+img, label = train_dataset[0]
+print("Shape of input Image: ", img.shape, "True Label: ", label)
+
+torch.manual_seed(43)
+val_size = 1000
+train_size = len(train_dataset) - val_size
+
+train_ds, val_ds = random_split(train_dataset, [train_size, val_size])
+print("Number of training images: ", len(train_ds))
+print("Number of validation images: ", len(val_ds))
+
+batch_size = 4
+train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=True)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
+
+if args["model"] == 'vgg16':
+    vgg_model = vgg16(num_classes=2).to(device=device)
+
+elif args["model"] == "vgg19":
+    vgg_model = vgg19(num_classes=2).to(device=device)
+
+else:
+	print("Invalid Model Type - Choose vgg16 or vgg19")
+	sys.exit(1)
+
+
+# print(summary(vgg_model, input_size=(3, 224, 224), batch_size=2, device='cuda'))
+
+num_epochs = 10
+# opt_func = optim.Adam
+lr = 0.001
+
+history = fit(num_epochs, lr, vgg_model, train_loader, val_loader, device)
