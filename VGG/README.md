@@ -30,7 +30,7 @@ dataset/
 ```
 
 Each "class folder" should contain it's corresponding images. 
-By default the number of classes is set to 10. In the `main.py` script the classes would be set to 2 when the models were created. Feel free to change this according to the dataset you use.
+By default the number of classes is set to 10. In the `main.py` script the classes would be set to 2 when the model was created. Feel free to change this according to the dataset you use.
 
 ## References
 [Very Deep Convolutional Networks for Large-Scale Image Recognition](https://arxiv.org/abs/1409.1556)
