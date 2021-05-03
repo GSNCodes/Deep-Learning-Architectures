@@ -4,7 +4,7 @@
 
 ## Notes
 
-The `VGG_Net.py` script contains the VGG16 and VGG19 models.
+The `VGG_Net.py` script contains the VGG16 and VGG19 models built from scratch.
 
 `main.py` contains code to train the models in the above file.  
 You can choose between the two models as follows:-  
