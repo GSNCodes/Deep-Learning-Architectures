@@ -3,40 +3,43 @@ import torch.nn as nn
 
 class ConvBlock(nn.Module):
 
-	def __init__(self, in_channels, out_channels, kernel_size, stride, padding):
+	def __init__(self, in_channels, out_channels, kernel_size, stride, padding, use_batchnorm=True):
 
 		super().__init__()
+
+		self.use_batchnorm = use_batchnorm
+
 		self.relu = nn.ReLU()
 		self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride = stride, padding=padding)
 		self.batchnorm = nn.BatchNorm2d(out_channels)
 
 
-	def forward(self, x, batchnorm=False):
-		if batchnorm is True:
+	def forward(self, x):
+		if self.use_batchnorm is True:
 			return self.relu(self.batchnorm(self.conv(x)))
 		return self.relu(self.conv(x))
 
 
 class InceptionBlock(nn.Module):
 
-	def __init__(self, in_channels, out_1x1, red_3x3, out_3x3, red_5x5, out_5x5, out_pool):
+	def __init__(self, in_channels, out_1x1, red_3x3, out_3x3, red_5x5, out_5x5, out_pool, use_batchnorm=True):
 		super().__init__()
 
-		self.branch_1 = ConvBlock(in_channels, out_1x1, kernel_size=1, stride=1, padding=0)
+		self.branch_1 = ConvBlock(in_channels, out_1x1, kernel_size=1, stride=1, padding=0, use_batchnorm=use_batchnorm)
 
 		self.branch_2 = nn.Sequential(
-			ConvBlock(in_channels, red_3x3, kernel_size=1, stride=1, padding=0),
-			ConvBlock(red_3x3, out_3x3, kernel_size=3, stride=1, padding=1)
+			ConvBlock(in_channels, red_3x3, kernel_size=1, stride=1, padding=0, use_batchnorm=use_batchnorm),
+			ConvBlock(red_3x3, out_3x3, kernel_size=3, stride=1, padding=1, use_batchnorm=use_batchnorm)
 			)
 
 		self.branch_3 = nn.Sequential(
-			ConvBlock(in_channels, red_5x5, kernel_size=1, stride=1, padding=0),
-			ConvBlock(red_5x5, out_5x5, kernel_size=5, stride=1, padding=2)
+			ConvBlock(in_channels, red_5x5, kernel_size=1, stride=1, padding=0, use_batchnorm=use_batchnorm),
+			ConvBlock(red_5x5, out_5x5, kernel_size=5, stride=1, padding=2, use_batchnorm=use_batchnorm)
 			)
 
 		self.branch_4 = nn.Sequential(
 			nn.MaxPool2d(kernel_size=3, stride=1, padding=1),
-			ConvBlock(in_channels, out_pool, kernel_size=1, stride=1, padding=0)
+			ConvBlock(in_channels, out_pool, kernel_size=1, stride=1, padding=0, use_batchnorm=use_batchnorm)
 			)
 
 
@@ -45,15 +48,39 @@ class InceptionBlock(nn.Module):
 		return torch.cat([self.branch_1(x), self.branch_2(x), self.branch_3(x), self.branch_4(x)], axis=1)
 
 
+class AuxiliaryClassifier(nn.Module):
+    def __init__(self, in_channels, num_classes, use_batchnorm=True):
+        super().__init__()
+        
+        self.pool = nn.AvgPool2d(kernel_size=5, stride=3)
+        self.conv = ConvBlock(in_channels, 128, kernel_size=1, stride=1, padding=0, use_batchnorm=use_batchnorm)
+        self.fc1 = nn.Linear(4 * 4 * 128 , 1024)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(p=0.7)
+        self.fc2 = nn.Linear(1024, num_classes)
+
+    def forward(self, x):
+        x = self.pool(x)
+        x = self.conv(x)
+        x = x.reshape(x.shape[0], -1)
+        x = self.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = self.fc2(x)
+
+        return x
+
+
 class GoogLeNet(nn.Module):
 
-	def __init__(self, in_channels = 3, num_classes = 10):
+	def __init__(self, in_channels = 3, num_classes = 10, aux_network=False, use_batchnorm=True):
 		super().__init__()
 
-		self.conv1 = ConvBlock(in_channels=in_channels, out_channels=64, kernel_size=7, stride=2, padding=3)
+		self.aux_network = aux_network
+
+		self.conv1 = ConvBlock(in_channels=in_channels, out_channels=64, kernel_size=7, stride=2, padding=3, use_batchnorm=use_batchnorm)
 		self.maxpool1 = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
-		self.conv2 = ConvBlock(in_channels=64, out_channels=192, kernel_size=3, stride=1, padding=1)
+		self.conv2 = ConvBlock(in_channels=64, out_channels=192, kernel_size=3, stride=1, padding=1, use_batchnorm=use_batchnorm)
 		self.maxpool2 = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
 		# For ref:- in_channels, out_1x1, red_3x3, out_3x3, red_5x5, out_5x5, out_pool
@@ -80,6 +107,10 @@ class GoogLeNet(nn.Module):
 
 		self.fc1 = nn.Linear(in_features=1024, out_features=num_classes)
 
+		if self.aux_network is True:
+			self.aux1 = AuxiliaryClassifier(512, num_classes)
+			self.aux2 = AuxiliaryClassifier(528, num_classes)
+
 	def forward(self, x):
 
 		x = self.conv1(x)
@@ -93,9 +124,17 @@ class GoogLeNet(nn.Module):
 		x = self.maxpool3(x)
 
 		x = self.inception_4a(x)
+
+		if self.aux_network is True and self.training:
+			aux1 = self.aux1(x)
+		
 		x = self.inception_4b(x)
 		x = self.inception_4c(x)
 		x = self.inception_4d(x)
+		
+		if self.aux_network is True and self.training:	
+			aux2 = self.aux2(x)
+
 		x = self.inception_4e(x)
 
 		x = self.maxpool4(x)
@@ -111,13 +150,28 @@ class GoogLeNet(nn.Module):
 
 		x = self.fc1(x)
 
+		if self.aux_network is True and self.training:
+			return aux1, aux2, x
+
 		return x
 
 
 if __name__ == '__main__':
 
-	sample_input = torch.randn(5, 3, 224, 224)
-	model = GoogLeNet()
+	aux_network = True # True or False
+	use_batchnorm = True # True or False
 
-	# Should Output:- 5 x 10
-	print(model(sample_input).shape)
+	sample_input = torch.randn(5, 3, 224, 224)
+	model = GoogLeNet(aux_network=aux_network, use_batchnorm=use_batchnorm)
+
+	if aux_network is True:
+		a1, a2, x = model(sample_input)
+		# Should Output:- 5 x 10
+		print(x.shape)
+		print(a1.shape)
+		print(a2.shape)
+
+	else:
+		x = model(sample_input)
+		# Should Output:- 5 x 10
+		print(x.shape)
