@@ -20,6 +20,29 @@ For example,
 
 This makes sure that the model includes both Batch Normalization layers as well as the Auxiliary Classifiers during training.
 
+The directory structure for the dataset is supposed to be like this:-
+```
+dataset/
+  ----train_set/
+    ----Class-1/
+    ----Class-2/
+    .
+    .
+    .
+    ----Class-n/
+    
+  ----test_set/
+    ----Class-1/
+    ----Class-2/
+    .
+    .
+    .
+    ----Class-n/
+```
+
+Each "class folder" should contain it's corresponding images. 
+By default the number of classes is set to 10. In the `train.py` script the classes would be set to 2 when the model was created. Feel free to change this according to the dataset you use.
+
 ## References
 [Going deeper with convolutions](https://arxiv.org/pdf/1409.4842.pdf)
 
