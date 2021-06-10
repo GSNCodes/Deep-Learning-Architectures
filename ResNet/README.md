@@ -39,3 +39,5 @@ For ResNet-152:
 `model = resnet18()`  
   
   
+## Reference
+[Deep Residual Learning for Image Recognition](https://arxiv.org/abs/1512.03385)
