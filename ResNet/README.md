@@ -16,7 +16,30 @@ The variants are:-
 - ResNet-34
 - ResNet-50
 - ResNet-101
-- ResNet-152
+- ResNet-152  
+
+The directory structure for the dataset is supposed to be like this:-
+```
+dataset/
+  ----train_set/
+    ----Class-1/
+    ----Class-2/
+    .
+    .
+    .
+    ----Class-n/
+    
+  ----test_set/
+    ----Class-1/
+    ----Class-2/
+    .
+    .
+    .
+    ----Class-n/
+```
+
+Each "class folder" should contain it's corresponding images. 
+By default the number of classes is set to 10. In the `train.py` script the classes would be set to 2 when the model was created. Feel free to change this according to the dataset you use.  
 
 ## Example Commands
 
