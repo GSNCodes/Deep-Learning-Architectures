@@ -47,7 +47,7 @@ You can import the resnet module as given below
 `from resnet import resnet18, resnet34, resnet50, resnet101, resnet152`  
 
 For ResNet-18:  
-`model = resnet18()`  
+`model = resnet18(num_classes=..)`  
   
 For ResNet-34:  
 `model = resnet34()`  
