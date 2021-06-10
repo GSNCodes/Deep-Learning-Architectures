@@ -27,16 +27,16 @@ For ResNet-18:
 `model = resnet18()`  
   
 For ResNet-34:  
-`model = resnet18()`  
+`model = resnet34()`  
   
 For ResNet-50:  
-`model = resnet18()`  
+`model = resnet50()`  
   
 For ResNet-101:  
-`model = resnet18()`  
+`model = resnet101()`  
   
 For ResNet-152:  
-`model = resnet18()`  
+`model = resnet152()`  
   
   
 ## Reference
