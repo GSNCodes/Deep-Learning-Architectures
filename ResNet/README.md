@@ -39,7 +39,7 @@ dataset/
 ```
 
 Each "class folder" should contain it's corresponding images. 
-By default the number of classes is set to 10. In the `train.py` script the classes would be set to 2 when the model was created. Feel free to change this according to the dataset you use.  
+By default the number of classes is set to **10**. In the `train.py` script the classes would be set to 2 when the model was created. Feel free to change this according to the dataset you use.  
 
 ## Example Commands
 
@@ -47,19 +47,19 @@ You can import the resnet module as given below
 `from resnet import resnet18, resnet34, resnet50, resnet101, resnet152`  
 
 For ResNet-18:  
-`model = resnet18(num_classes=..)`  
+`model = resnet18(num_classes=<enter no. of classes>)`  
   
 For ResNet-34:  
-`model = resnet34()`  
+`model = resnet34(num_classes=<enter no. of classes>)`  
   
 For ResNet-50:  
-`model = resnet50()`  
+`model = resnet50(num_classes=<enter no. of classes>)`  
   
 For ResNet-101:  
-`model = resnet101()`  
+`model = resnet101(num_classes=<enter no. of classes>)`  
   
 For ResNet-152:  
-`model = resnet152()`  
+`model = resnet152(num_classes=<enter no. of classes>)`  
   
   
 ## Reference
