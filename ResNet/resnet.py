@@ -177,25 +177,25 @@ class ResNet(nn.Module):
 		return x
 
 
-def resnet18(num_blocks=[2, 2, 2, 2]):
+def resnet18(num_blocks=[2, 2, 2, 2], num_classes=10):
 
-	return ResNet(num_blocks, deep=False)
+	return ResNet(num_blocks, num_classes=num_classes, deep=False)
 
-def resnet34(num_blocks=[3, 4, 6, 3]):
+def resnet34(num_blocks=[3, 4, 6, 3], num_classes=10):
 
-	return ResNet(num_blocks, deep=False)
+	return ResNet(num_blocks, num_classes=num_classes, deep=False)
 
-def resnet50(num_blocks=[3, 4, 6, 3]):
+def resnet50(num_blocks=[3, 4, 6, 3], num_classes=10):
 
-	return ResNet(num_blocks)
+	return ResNet(num_blocks, num_classes=num_classes)
 
-def resnet101(num_blocks=[3, 4, 23, 3]):
+def resnet101(num_blocks=[3, 4, 23, 3], num_classes=10):
 
-	return ResNet(num_blocks)
+	return ResNet(num_blocks, num_classes=num_classes)
 
-def resnet152(num_blocks=[3, 8, 36, 3]):
+def resnet152(num_blocks=[3, 8, 36, 3], num_classes=10):
 
-	return ResNet(num_blocks)
+	return ResNet(num_blocks, num_classes=num_classes)
 
 
 
